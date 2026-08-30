@@ -117,13 +117,29 @@ async function startDownload() {
 async function poll(jobId) {
   const statusEl = document.getElementById('status');
   const btn = document.getElementById('btn');
+  let ticks = 0;
   const interval = setInterval(async () => {
-    const res = await fetch('/api/status/' + jobId);
-    const data = await res.json();
+    ticks++;
+    let res, data;
+    try {
+      res = await fetch('/api/status/' + jobId);
+      data = await res.json();
+    } catch (e) {
+      return;
+    }
+    if (res.status === 404) {
+      clearInterval(interval);
+      statusEl.textContent = 'خطا: کار پیدا نشد (شاید سرور ری‌استارت شده)';
+      btn.disabled = false;
+      return;
+    }
     if (data.status === 'queued') {
       statusEl.textContent = 'در صف...';
     } else if (data.status === 'processing') {
-      statusEl.textContent = 'در حال دانلود...';
+      statusEl.textContent = 'در حال دانلود... (' + (ticks * 2) + ' ثانیه)';
+      if (ticks * 2 > 90) {
+        statusEl.textContent += ' — اگه خیلی طول کشید، لاگ Railway رو چک کن';
+      }
     } else if (data.status === 'done') {
       clearInterval(interval);
       statusEl.textContent = 'آماده شد: ' + data.title;

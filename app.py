@@ -3,6 +3,7 @@ import time
 import uuid
 import threading
 import queue
+import traceback
 from flask import Flask, request, jsonify, send_file, render_template
 
 import yt_dlp
@@ -65,6 +66,10 @@ def run_download(job_id, url, format_id, mode):
         "outtmpl": output_template,
         "noplaylist": True,
         "quiet": True,
+        "socket_timeout": 30,
+        "retries": 3,
+        "fragment_retries": 3,
+        "extractor_retries": 2,
     }
     if format_id == "audio":
         ydl_opts["format"] = "bestaudio/best"
@@ -80,9 +85,12 @@ def run_download(job_id, url, format_id, mode):
         ydl_opts["format"] = "bestvideo+bestaudio/best"
         ydl_opts["merge_output_format"] = "mp4"
 
+    print(f"[{job_id}] starting download url={url} format={format_id} mode={mode}", flush=True)
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            print(f"[{job_id}] calling extract_info...", flush=True)
             info = ydl.extract_info(url, download=True)
+            print(f"[{job_id}] extract_info finished", flush=True)
 
         candidates = [
             f for f in os.listdir(DOWNLOAD_DIR)
@@ -98,6 +106,7 @@ def run_download(job_id, url, format_id, mode):
 
         candidates.sort(key=rank)
         filename = os.path.join(DOWNLOAD_DIR, candidates[0])
+        print(f"[{job_id}] done, file={filename}", flush=True)
 
         jobs[job_id] = {
             "status": "done",
@@ -107,6 +116,8 @@ def run_download(job_id, url, format_id, mode):
             "done_at": time.time(),
         }
     except Exception as e:
+        print(f"[{job_id}] ERROR: {e}", flush=True)
+        traceback.print_exc()
         jobs[job_id] = {"status": "error", "error": str(e)}
 
 
