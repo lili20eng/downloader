@@ -74,7 +74,7 @@ def run_download(job_id, url, format_id, mode):
             "preferredquality": "192",
         }]
     elif format_id:
-        ydl_opts["format"] = f"{format_id}+bestaudio/best"
+        ydl_opts["format"] = f"{format_id}+bestaudio/{format_id}/best"
         ydl_opts["merge_output_format"] = "mp4"
     else:
         ydl_opts["format"] = "bestvideo+bestaudio/best"
@@ -126,16 +126,19 @@ def get_formats():
             info = ydl.extract_info(url, download=False)
         formats = []
         for f in info.get("formats", []):
-            if f.get("vcodec") != "none" and f.get("acodec") == "none":
-                height = f.get("height")
-                filesize = f.get("filesize") or f.get("filesize_approx")
-                formats.append({
-                    "format_id": f["format_id"],
-                    "label": f"{height}p" if height else f.get("format_note", f["format_id"]),
-                    "ext": f.get("ext"),
-                    "filesize": filesize,
-                    "height": height or 0,
-                })
+            if f.get("vcodec") == "none":
+                continue
+            height = f.get("height")
+            filesize = f.get("filesize") or f.get("filesize_approx")
+            has_audio = f.get("acodec") not in (None, "none")
+            formats.append({
+                "format_id": f["format_id"],
+                "label": f"{height}p" if height else f.get("format_note", f["format_id"]),
+                "ext": f.get("ext"),
+                "filesize": filesize,
+                "height": height or 0,
+                "has_audio": has_audio,
+            })
         seen = {}
         for f in formats:
             key = f["height"]
