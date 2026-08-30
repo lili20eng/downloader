@@ -5,10 +5,12 @@ import threading
 import queue
 import traceback
 from flask import Flask, request, jsonify, send_file, render_template
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import yt_dlp
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "downloads")
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
