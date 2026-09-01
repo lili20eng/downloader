@@ -3,29 +3,80 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>دانلودر</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<title id="pageTitle">دانلودر</title>
 <style>
-body { font-family: Tahoma, sans-serif; background:#111; color:#eee; display:flex; justify-content:center; padding:40px 12px; }
-.box { background:#1b1b1b; padding:24px; border-radius:12px; width:100%; max-width:440px; }
+:root {
+  --bg:#111; --box-bg:#1b1b1b; --text:#eee; --input-bg:#2a2a2a; --input-text:#fff;
+  --accent:#4c8bf5; --secondary-bg:#333; --disabled-bg:#555; --muted:#aaa; --title-color:#ccc;
+}
+body[data-theme="boy"] {
+  --bg:#0a0e1a; --box-bg:#131a2b; --text:#dbe6ff; --input-bg:#1c2540; --input-text:#fff;
+  --accent:#2f6fed; --secondary-bg:#1f2a45; --disabled-bg:#33406b; --muted:#93a3c9; --title-color:#b7c6ec;
+}
+body[data-theme="girl"] {
+  --bg:#1a0f1a; --box-bg:#2b1a2e; --text:#ffe6f5; --input-bg:#3a2440; --input-text:#fff;
+  --accent:#e84fc0; --secondary-bg:#3d2540; --disabled-bg:#5c3a5c; --muted:#c9a3c0; --title-color:#e6b8dd;
+}
+body[data-theme="autumn"] {
+  --bg:#1a120a; --box-bg:#2b1d12; --text:#ffe8d1; --input-bg:#3a2717; --input-text:#fff;
+  --accent:#e08030; --secondary-bg:#3d2a18; --disabled-bg:#6b4a2d; --muted:#c9a37e; --title-color:#e0b98f;
+}
+body[data-theme="spring"] {
+  --bg:#0d1710; --box-bg:#152a19; --text:#e2ffe6; --input-bg:#1f3d26; --input-text:#fff;
+  --accent:#4caf50; --secondary-bg:#1f3d26; --disabled-bg:#2f5c3a; --muted:#9fcfa8; --title-color:#b9e6c0;
+}
+body[data-theme="ocean"] {
+  --bg:#08161a; --box-bg:#0f2830; --text:#e0faff; --input-bg:#163a44; --input-text:#fff;
+  --accent:#22b8cf; --secondary-bg:#163a44; --disabled-bg:#1f4d59; --muted:#8fc9d4; --title-color:#a8dee6;
+}
+body[data-theme="light"] {
+  --bg:#f4f4f6; --box-bg:#ffffff; --text:#1b1b1f; --input-bg:#f0f0f3; --input-text:#111;
+  --accent:#3b6fe0; --secondary-bg:#e6e6ea; --disabled-bg:#c7c7cf; --muted:#666; --title-color:#444;
+}
+body[data-theme="telegram"] {
+  --bg:#17212b; --box-bg:#232e3c; --text:#f5f5f5; --input-bg:#2b3947; --input-text:#fff;
+  --accent:#5288c1; --secondary-bg:#2b3947; --disabled-bg:#3d4a58; --muted:#8a9aa9; --title-color:#c7d3dd;
+}
+body { font-family: Tahoma, sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:40px 12px; transition:background .2s,color .2s; }
+.box { background:var(--box-bg); padding:24px; border-radius:12px; width:100%; max-width:440px; }
+.top-row { display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px; }
+.top-row select { width:auto; padding:6px 10px; margin-top:0; font-size:13px; border-radius:8px; border:none; background:var(--input-bg); color:var(--input-text); }
 input, select, button { width:100%; padding:12px; margin-top:10px; border-radius:8px; border:none; font-size:15px; box-sizing:border-box; }
-input, select { background:#2a2a2a; color:#fff; }
-button { background:#4c8bf5; color:#fff; cursor:pointer; }
-button:disabled { background:#555; }
-button.secondary { background:#333; }
-#status { margin-top:14px; font-size:14px; color:#aaa; white-space:pre-wrap; }
-a.file-link { display:block; margin-top:14px; color:#4c8bf5; text-align:center; word-break:break-all; }
+input, select { background:var(--input-bg); color:var(--input-text); }
+button { background:var(--accent); color:#fff; cursor:pointer; }
+button:disabled { background:var(--disabled-bg); }
+button.secondary { background:var(--secondary-bg); }
+#status { margin-top:14px; font-size:14px; color:var(--muted); white-space:pre-wrap; }
+a.file-link { display:block; margin-top:14px; color:var(--accent); text-align:center; word-break:break-all; }
 .mode-row { display:flex; gap:8px; margin-top:10px; }
-.mode-row button { margin-top:0; }
-.mode-row button.active { background:#4c8bf5; }
+.mode-row button { margin-top:0; background:var(--secondary-bg); }
+.mode-row button.active { background:var(--accent); }
 .thumb { width:100%; border-radius:8px; margin-top:12px; }
-.title { margin-top:8px; font-size:14px; color:#ccc; }
+.title { margin-top:8px; font-size:14px; color:var(--title-color); }
 </style>
 </head>
 <body>
 <div class="box">
-<h2>دانلودر ویدیو / صدا</h2>
-<input id="url" placeholder="لینک را وارد کن">
-<button id="fetchBtn" onclick="fetchFormats()">دریافت کیفیت‌ها</button>
+<div class="top-row">
+<select id="langSelect" onchange="setLang(this.value)">
+<option value="fa">فارسی</option>
+<option value="en">English</option>
+</select>
+<select id="themeSelect" onchange="setTheme(this.value)">
+<option value="dark" data-i18n="theme_dark">تاریک</option>
+<option value="boy" data-i18n="theme_boy">پسرونه</option>
+<option value="girl" data-i18n="theme_girl">دخترونه</option>
+<option value="autumn" data-i18n="theme_autumn">پاییز</option>
+<option value="spring" data-i18n="theme_spring">بهار</option>
+<option value="ocean" data-i18n="theme_ocean">اقیانوس</option>
+<option value="light" data-i18n="theme_light">روشن</option>
+<option value="telegram" data-i18n="theme_telegram">تلگرام</option>
+</select>
+</div>
+<h2 data-i18n="heading">دانلودر ویدیو / صدا</h2>
+<input id="url" data-i18n-placeholder="url_placeholder" placeholder="لینک را وارد کن">
+<button id="fetchBtn" onclick="fetchFormats()" data-i18n="fetch_btn">دریافت کیفیت‌ها</button>
 
 <div id="preview" style="display:none">
 <img id="thumb" class="thumb">
@@ -33,16 +84,136 @@ a.file-link { display:block; margin-top:14px; color:#4c8bf5; text-align:center; 
 <select id="format"></select>
 
 <div class="mode-row">
-<button id="modeDirect" class="active" onclick="setMode('direct')">دانلود مستقیم</button>
-<button id="modeLink" onclick="setMode('link')">فقط لینک (برای IDM/ADM)</button>
+<button id="modeDirect" class="active" onclick="setMode('direct')" data-i18n="mode_direct">دانلود مستقیم</button>
+<button id="modeLink" onclick="setMode('link')" data-i18n="mode_link">فقط لینک (برای IDM/ADM)</button>
 </div>
 
-<button id="btn" onclick="startDownload()">شروع</button>
+<button id="btn" onclick="startDownload()" data-i18n="start_btn">شروع</button>
 </div>
 
 <div id="status"></div>
 </div>
 <script>
+const translations = {
+  fa: {
+    page_title: 'دانلودر',
+    heading: 'دانلودر ویدیو / صدا',
+    url_placeholder: 'لینک را وارد کن',
+    fetch_btn: 'دریافت کیفیت‌ها',
+    mode_direct: 'دانلود مستقیم',
+    mode_link: 'فقط لینک (برای IDM/ADM)',
+    start_btn: 'شروع',
+    audio_only: 'فقط صدا (mp3)',
+    theme_dark: 'تاریک', theme_boy: 'پسرونه', theme_girl: 'دخترونه', theme_autumn: 'پاییز',
+    theme_spring: 'بهار', theme_ocean: 'اقیانوس', theme_light: 'روشن', theme_telegram: 'تلگرام',
+    fetching_info: 'در حال دریافت اطلاعات...',
+    error_prefix: 'خطا: ',
+    queued: 'در صف قرار گرفت...',
+    in_queue: 'در صف...',
+    downloading: (s) => 'در حال دانلود... (' + s + ' ثانیه)',
+    slow_hint: ' — اگه خیلی طول کشید، لاگ سرور رو چک کن',
+    ready: (title) => 'آماده شد: ' + title,
+    paste_hint: 'این لینک را در ADM یا IDM بچسبان',
+    manual_click: 'اگر دانلود شروع نشد، اینجا بزن',
+    job_not_found: 'خطا: کار پیدا نشد (شاید سرور ری‌استارت شده)'
+  },
+  en: {
+    page_title: 'Downloader',
+    heading: 'Video / Audio Downloader',
+    url_placeholder: 'Enter the link',
+    fetch_btn: 'Get qualities',
+    mode_direct: 'Direct download',
+    mode_link: 'Link only (for IDM/ADM)',
+    start_btn: 'Start',
+    audio_only: 'Audio only (mp3)',
+    theme_dark: 'Dark', theme_boy: 'Boy', theme_girl: 'Girl', theme_autumn: 'Autumn',
+    theme_spring: 'Spring', theme_ocean: 'Ocean', theme_light: 'Light', theme_telegram: 'Telegram',
+    fetching_info: 'Fetching info...',
+    error_prefix: 'Error: ',
+    queued: 'Queued...',
+    in_queue: 'In queue...',
+    downloading: (s) => 'Downloading... (' + s + 's)',
+    slow_hint: ' — if this takes too long, check the server logs',
+    ready: (title) => 'Ready: ' + title,
+    paste_hint: 'Paste this link into ADM or IDM',
+    manual_click: 'If the download did not start, click here',
+    job_not_found: 'Error: job not found (server may have restarted)'
+  }
+};
+
+let currentLang = 'fa';
+
+function t(key) {
+  return translations[currentLang][key];
+}
+
+function applyStaticText() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  document.getElementById('pageTitle').textContent = t('page_title');
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
+  localStorage.setItem('lang', lang);
+  document.getElementById('langSelect').value = lang;
+  applyStaticText();
+}
+
+function setTheme(name) {
+  ['--bg','--box-bg','--text','--input-bg','--input-text','--accent','--secondary-bg','--muted','--title-color'].forEach(v => document.body.style.removeProperty(v));
+  document.body.dataset.theme = name;
+  localStorage.setItem('theme', name);
+  document.getElementById('themeSelect').value = name;
+  if (name === 'telegram' && window.Telegram && window.Telegram.WebApp) {
+    applyTelegramThemeParams();
+  }
+}
+
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+
+function applyTelegramThemeParams() {
+  if (!tg || !tg.themeParams) return;
+  const p = tg.themeParams;
+  const root = document.body.style;
+  if (p.bg_color) root.setProperty('--bg', p.bg_color);
+  if (p.secondary_bg_color) { root.setProperty('--box-bg', p.secondary_bg_color); root.setProperty('--input-bg', p.secondary_bg_color); root.setProperty('--secondary-bg', p.secondary_bg_color); }
+  if (p.text_color) { root.setProperty('--text', p.text_color); root.setProperty('--input-text', p.text_color); }
+  if (p.hint_color) { root.setProperty('--muted', p.hint_color); root.setProperty('--title-color', p.hint_color); }
+  if (p.button_color) root.setProperty('--accent', p.button_color);
+}
+
+function hapticTap() {
+  if (tg && tg.HapticFeedback) {
+    try { tg.HapticFeedback.impactOccurred('light'); } catch (e) {}
+  }
+}
+
+if (tg) {
+  try { tg.ready(); tg.expand(); } catch (e) {}
+  const hasStoredTheme = !!localStorage.getItem('theme');
+  setTheme(hasStoredTheme ? localStorage.getItem('theme') : 'telegram');
+  if ((localStorage.getItem('theme') || 'telegram') === 'telegram') {
+    applyTelegramThemeParams();
+  }
+  if (tg.onEvent) {
+    tg.onEvent('themeChanged', () => {
+      if (document.body.dataset.theme === 'telegram') applyTelegramThemeParams();
+    });
+  }
+  document.querySelectorAll('button').forEach(b => b.addEventListener('click', hapticTap));
+} else {
+  setTheme(localStorage.getItem('theme') || 'dark');
+}
+
+setLang(localStorage.getItem('lang') || 'fa');
+
 let currentMode = 'direct';
 let currentFormats = [];
 
@@ -56,7 +227,7 @@ async function fetchFormats() {
   const url = document.getElementById('url').value.trim();
   const statusEl = document.getElementById('status');
   if (!url) return;
-  statusEl.textContent = 'در حال دریافت اطلاعات...';
+  statusEl.textContent = t('fetching_info');
   document.getElementById('preview').style.display = 'none';
 
   const res = await fetch('/api/formats', {
@@ -66,7 +237,7 @@ async function fetchFormats() {
   });
   const data = await res.json();
   if (data.error) {
-    statusEl.textContent = 'خطا: ' + data.error;
+    statusEl.textContent = t('error_prefix') + data.error;
     return;
   }
   statusEl.textContent = '';
@@ -77,7 +248,7 @@ async function fetchFormats() {
 
   const audioOpt = document.createElement('option');
   audioOpt.value = 'audio';
-  audioOpt.textContent = 'فقط صدا (mp3)';
+  audioOpt.textContent = t('audio_only');
   select.appendChild(audioOpt);
 
   (data.formats || []).forEach(f => {
@@ -98,7 +269,7 @@ async function startDownload() {
   const statusEl = document.getElementById('status');
   if (!url) return;
   btn.disabled = true;
-  statusEl.textContent = 'در صف قرار گرفت...';
+  statusEl.textContent = t('queued');
 
   const res = await fetch('/api/download', {
     method: 'POST',
@@ -107,7 +278,7 @@ async function startDownload() {
   });
   const data = await res.json();
   if (data.error) {
-    statusEl.textContent = 'خطا: ' + data.error;
+    statusEl.textContent = t('error_prefix') + data.error;
     btn.disabled = false;
     return;
   }
@@ -129,20 +300,20 @@ async function poll(jobId) {
     }
     if (res.status === 404) {
       clearInterval(interval);
-      statusEl.textContent = 'خطا: کار پیدا نشد (شاید سرور ری‌استارت شده)';
+      statusEl.textContent = t('job_not_found');
       btn.disabled = false;
       return;
     }
     if (data.status === 'queued') {
-      statusEl.textContent = 'در صف...';
+      statusEl.textContent = t('in_queue');
     } else if (data.status === 'processing') {
-      statusEl.textContent = 'در حال دانلود... (' + (ticks * 2) + ' ثانیه)';
+      statusEl.textContent = t('downloading')(ticks * 2);
       if (ticks * 2 > 90) {
-        statusEl.textContent += ' — اگه خیلی طول کشید، لاگ Railway رو چک کن';
+        statusEl.textContent += t('slow_hint');
       }
     } else if (data.status === 'done') {
       clearInterval(interval);
-      statusEl.textContent = 'آماده شد: ' + data.title;
+      statusEl.textContent = t('ready')(data.title);
       if (data.mode === 'link') {
         const link = document.createElement('a');
         link.className = 'file-link';
@@ -152,22 +323,29 @@ async function poll(jobId) {
         statusEl.appendChild(document.createElement('br'));
         statusEl.appendChild(link);
         const hint = document.createElement('div');
-        hint.textContent = 'این لینک را در ADM یا IDM بچسبان';
+        hint.textContent = t('paste_hint');
         hint.style.marginTop = '6px';
         statusEl.appendChild(hint);
       } else {
-        window.location.href = data.link;
+        if (tg && tg.openLink) {
+          tg.openLink(data.link);
+        } else {
+          window.location.href = data.link;
+        }
         const link = document.createElement('a');
         link.className = 'file-link';
         link.href = data.link;
-        link.textContent = 'اگر دانلود شروع نشد، اینجا بزن';
+        link.textContent = t('manual_click');
+        if (tg && tg.openLink) {
+          link.addEventListener('click', (e) => { e.preventDefault(); tg.openLink(data.link); });
+        }
         statusEl.appendChild(document.createElement('br'));
         statusEl.appendChild(link);
       }
       btn.disabled = false;
     } else if (data.status === 'error') {
       clearInterval(interval);
-      statusEl.textContent = 'خطا: ' + data.error;
+      statusEl.textContent = t('error_prefix') + data.error;
       btn.disabled = false;
     }
   }, 2000);
