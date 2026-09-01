@@ -114,7 +114,7 @@ const translations = {
     slow_hint: ' — اگه خیلی طول کشید، لاگ سرور رو چک کن',
     ready: (title) => 'آماده شد: ' + title,
     paste_hint: 'این لینک را در ADM یا IDM بچسبان',
-    manual_click: 'اگر دانلود شروع نشد، اینجا بزن',
+    manual_click: 'برای دانلود فایل کلیک کن',
     job_not_found: 'خطا: کار پیدا نشد (شاید سرور ری‌استارت شده)'
   },
   en: {
@@ -136,7 +136,7 @@ const translations = {
     slow_hint: ' — if this takes too long, check the server logs',
     ready: (title) => 'Ready: ' + title,
     paste_hint: 'Paste this link into ADM or IDM',
-    manual_click: 'If the download did not start, click here',
+    manual_click: 'Tap here to download the file',
     job_not_found: 'Error: job not found (server may have restarted)'
   }
 };
@@ -327,15 +327,11 @@ async function poll(jobId) {
         hint.style.marginTop = '6px';
         statusEl.appendChild(hint);
       } else {
-        if (tg && tg.openLink) {
-          tg.openLink(data.link);
-        } else {
-          window.location.href = data.link;
-        }
         const link = document.createElement('a');
         link.className = 'file-link';
         link.href = data.link;
-        link.textContent = t('manual_click');
+        link.textContent = '⬇️ ' + t('manual_click');
+        link.style.cssText = 'background:var(--accent);color:#fff;padding:12px;border-radius:8px;text-align:center;font-weight:bold;text-decoration:none;';
         if (tg && tg.openLink) {
           link.addEventListener('click', (e) => { e.preventDefault(); tg.openLink(data.link); });
         }
