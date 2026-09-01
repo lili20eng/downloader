@@ -8,9 +8,12 @@ from flask import Flask, request, jsonify, send_file, render_template
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import yt_dlp
+import telegram_bot
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+telegram_bot.register_webhook()
 
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "downloads")
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
@@ -196,6 +199,18 @@ def get_file(job_id):
     if not job or job.get("status") != "done":
         return jsonify({"error": "not ready"}), 404
     return send_file(job["file"], as_attachment=True, download_name=os.path.basename(job["file"]), conditional=True)
+
+
+@app.route("/telegram/webhook/<secret>", methods=["POST"])
+def telegram_webhook(secret):
+    if secret != telegram_bot.WEBHOOK_SECRET:
+        return jsonify({"error": "forbidden"}), 403
+    update = request.get_json(force=True, silent=True) or {}
+    try:
+        telegram_bot.handle_update(update)
+    except Exception as e:
+        print(f"[telegram] ERROR: {e}", flush=True)
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
