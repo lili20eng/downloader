@@ -44,7 +44,7 @@ def send_welcome(chat_id, language_code):
         "text": text,
         "reply_markup": {
             "inline_keyboard": [[
-                {"text": button_text, "web_app": {"url": WEBAPP_URL}}
+                {"text": button_text, "web_app": {"url": WEBAPP_URL}, "style": "primary"}
             ]]
         }
     }
