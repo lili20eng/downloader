@@ -38,10 +38,15 @@ body[data-theme="telegram"] {
   --bg:#17212b; --box-bg:#232e3c; --text:#f5f5f5; --input-bg:#2b3947; --input-text:#fff;
   --accent:#5288c1; --secondary-bg:#2b3947; --disabled-bg:#3d4a58; --muted:#8a9aa9; --title-color:#c7d3dd;
 }
-body { font-family: Tahoma, sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:40px 12px; transition:background .2s,color .2s; }
-.box { background:var(--box-bg); padding:24px; border-radius:12px; width:100%; max-width:440px; }
-.top-row { display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px; }
-.top-row select { width:auto; padding:6px 10px; margin-top:0; font-size:13px; border-radius:8px; border:none; background:var(--input-bg); color:var(--input-text); }
+body { font-family: Tahoma, sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:40px 12px; transition:background .2s,color .2s; background-size:cover; background-position:center; }
+.box { background:var(--box-bg); padding:24px; border-radius:12px; width:100%; max-width:440px; transition:backdrop-filter .2s; }
+.top-row { display:flex; justify-content:flex-end; margin-bottom:8px; }
+.icon-btn { width:auto; padding:8px 12px; margin-top:0; font-size:16px; line-height:1; border-radius:8px; border:none; background:var(--secondary-bg); color:var(--text); cursor:pointer; }
+.settings-panel { background:var(--secondary-bg); border-radius:10px; padding:14px; margin-bottom:14px; }
+.settings-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; }
+.settings-row:first-child { margin-top:0; }
+.settings-row label { font-size:14px; color:var(--title-color); white-space:nowrap; }
+.settings-row select { width:auto; margin-top:0; padding:6px 10px; font-size:13px; border-radius:8px; border:none; background:var(--input-bg); color:var(--input-text); }
 input, select, button { width:100%; padding:12px; margin-top:10px; border-radius:8px; border:none; font-size:15px; box-sizing:border-box; }
 input, select { background:var(--input-bg); color:var(--input-text); }
 button { background:var(--accent); color:#fff; cursor:pointer; }
@@ -54,15 +59,35 @@ a.file-link { display:block; margin-top:14px; color:var(--accent); text-align:ce
 .mode-row button.active { background:var(--accent); }
 .thumb { width:100%; border-radius:8px; margin-top:12px; }
 .title { margin-top:8px; font-size:14px; color:var(--title-color); }
+.lang-prompt { position:fixed; inset:0; background:rgba(0,0,0,0.88); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px; }
+.lang-prompt-box { background:var(--box-bg); border-radius:12px; padding:24px; width:100%; max-width:320px; text-align:center; }
+.lang-prompt-box p { color:var(--text); margin:0 0 16px; font-size:15px; }
+.lang-prompt-box button { margin-top:10px; }
+.lang-prompt-box button:first-of-type { margin-top:0; }
 </style>
 </head>
 <body>
+<div id="langPrompt" class="lang-prompt">
+<div class="lang-prompt-box">
+<p>زبان را انتخاب کن / Choose your language</p>
+<button type="button" onclick="chooseLang('fa')">فارسی</button>
+<button type="button" onclick="chooseLang('en')">English</button>
+</div>
+</div>
 <div class="box">
 <div class="top-row">
+<button type="button" class="icon-btn" onclick="toggleSettings()" aria-label="settings">⚙️</button>
+</div>
+<div id="settingsPanel" class="settings-panel" style="display:none">
+<div class="settings-row">
+<label data-i18n="lang_label">زبان</label>
 <select id="langSelect" onchange="setLang(this.value)">
 <option value="fa">فارسی</option>
 <option value="en">English</option>
 </select>
+</div>
+<div class="settings-row">
+<label data-i18n="theme_label">تم</label>
 <select id="themeSelect" onchange="setTheme(this.value)">
 <option value="dark" data-i18n="theme_dark">تاریک</option>
 <option value="boy" data-i18n="theme_boy">پسرونه</option>
@@ -72,7 +97,18 @@ a.file-link { display:block; margin-top:14px; color:var(--accent); text-align:ce
 <option value="ocean" data-i18n="theme_ocean">اقیانوس</option>
 <option value="light" data-i18n="theme_light">روشن</option>
 <option value="telegram" data-i18n="theme_telegram">تلگرام</option>
+<option value="custom" data-i18n="theme_custom">تصویر من</option>
 </select>
+</div>
+<div id="themeImageRow" style="display:none">
+<div class="title" data-i18n="custom_theme_hint">یک عکس انتخاب کن تا رنگ‌ها و پس‌زمینه از روی اون ساخته بشه</div>
+<input type="file" id="themeImageInput" accept="image/*" onchange="handleThemeImage(this.files[0])">
+<div class="mode-row">
+<button type="button" onclick="exportThemeBackup()" data-i18n="backup_export">دانلود پشتیبان</button>
+<button type="button" onclick="document.getElementById('themeBackupInput').click()" data-i18n="backup_import">بازیابی پشتیبان</button>
+</div>
+<input type="file" id="themeBackupInput" accept="application/json" style="display:none" onchange="importThemeBackup(this.files[0])">
+</div>
 </div>
 <h2 data-i18n="heading">دانلودر ویدیو / صدا</h2>
 <input id="url" data-i18n-placeholder="url_placeholder" placeholder="لینک را وارد کن">
@@ -104,8 +140,17 @@ const translations = {
     mode_link: 'فقط لینک (برای IDM/ADM)',
     start_btn: 'شروع',
     audio_only: 'فقط صدا (mp3)',
+    lang_label: 'زبان',
+    theme_label: 'تم',
     theme_dark: 'تاریک', theme_boy: 'پسرونه', theme_girl: 'دخترونه', theme_autumn: 'پاییز',
     theme_spring: 'بهار', theme_ocean: 'اقیانوس', theme_light: 'روشن', theme_telegram: 'تلگرام',
+    theme_custom: 'تصویر من',
+    custom_theme_hint: 'یک عکس انتخاب کن تا رنگ‌ها و پس‌زمینه از روی اون ساخته بشه',
+    backup_export: 'دانلود پشتیبان',
+    backup_import: 'بازیابی پشتیبان',
+    backup_none: 'هنوز عکسی برای تم انتخاب نکردی',
+    backup_invalid: 'فایل پشتیبان معتبر نیست',
+    backup_restored: 'پشتیبان با موفقیت بازیابی شد',
     fetching_info: 'در حال دریافت اطلاعات...',
     error_prefix: 'خطا: ',
     queued: 'در صف قرار گرفت...',
@@ -115,7 +160,8 @@ const translations = {
     ready: (title) => 'آماده شد: ' + title,
     paste_hint: 'این لینک را در ADM یا IDM بچسبان',
     manual_click: 'برای دانلود فایل کلیک کن',
-    job_not_found: 'خطا: کار پیدا نشد (شاید سرور ری‌استارت شده)'
+    job_not_found: 'خطا: کار پیدا نشد (شاید سرور ری‌استارت شده)',
+    too_long: 'این ویدیو بیشتر از حد مجاز طوله؛ دانلود مسدود می‌شه'
   },
   en: {
     page_title: 'Downloader',
@@ -126,8 +172,17 @@ const translations = {
     mode_link: 'Link only (for IDM/ADM)',
     start_btn: 'Start',
     audio_only: 'Audio only (mp3)',
+    lang_label: 'Language',
+    theme_label: 'Theme',
     theme_dark: 'Dark', theme_boy: 'Boy', theme_girl: 'Girl', theme_autumn: 'Autumn',
     theme_spring: 'Spring', theme_ocean: 'Ocean', theme_light: 'Light', theme_telegram: 'Telegram',
+    theme_custom: 'My Photo',
+    custom_theme_hint: 'Pick a photo to generate the colors and background from',
+    backup_export: 'Export backup',
+    backup_import: 'Restore backup',
+    backup_none: 'No theme photo selected yet',
+    backup_invalid: 'Invalid backup file',
+    backup_restored: 'Backup restored successfully',
     fetching_info: 'Fetching info...',
     error_prefix: 'Error: ',
     queued: 'Queued...',
@@ -137,7 +192,8 @@ const translations = {
     ready: (title) => 'Ready: ' + title,
     paste_hint: 'Paste this link into ADM or IDM',
     manual_click: 'Tap here to download the file',
-    job_not_found: 'Error: job not found (server may have restarted)'
+    job_not_found: 'Error: job not found (server may have restarted)',
+    too_long: 'This video is longer than the allowed limit; download is blocked'
   }
 };
 
@@ -157,6 +213,11 @@ function applyStaticText() {
   document.getElementById('pageTitle').textContent = t('page_title');
 }
 
+function toggleSettings() {
+  const panel = document.getElementById('settingsPanel');
+  panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+}
+
 function setLang(lang) {
   currentLang = lang;
   document.documentElement.lang = lang;
@@ -167,16 +228,176 @@ function setLang(lang) {
 }
 
 function setTheme(name) {
-  ['--bg','--box-bg','--text','--input-bg','--input-text','--accent','--secondary-bg','--muted','--title-color'].forEach(v => document.body.style.removeProperty(v));
+  ['--bg','--box-bg','--text','--input-bg','--input-text','--accent','--secondary-bg','--disabled-bg','--muted','--title-color'].forEach(v => document.body.style.removeProperty(v));
+  document.body.style.backgroundImage = '';
+  document.body.style.backgroundAttachment = '';
+  document.body.style.backgroundRepeat = '';
+  const box = document.querySelector('.box');
+  if (box) { box.style.backdropFilter = ''; box.style.webkitBackdropFilter = ''; box.style.border = ''; }
   document.body.dataset.theme = name;
   localStorage.setItem('theme', name);
   document.getElementById('themeSelect').value = name;
-  if (name === 'telegram' && window.Telegram && window.Telegram.WebApp) {
+  document.getElementById('themeImageRow').style.display = name === 'custom' ? 'block' : 'none';
+  if (name === 'telegram' && inTelegram) {
     applyTelegramThemeParams();
+  }
+  if (name === 'custom') {
+    const stored = localStorage.getItem('customThemeImage');
+    if (stored) applyCustomImageTheme(stored);
   }
 }
 
+function handleThemeImage(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxDim = 1000;
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        const scale = maxDim / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const resized = canvas.toDataURL('image/jpeg', 0.82);
+      try { localStorage.setItem('customThemeImage', resized); } catch (err) {}
+      applyCustomImageTheme(resized);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function exportThemeBackup() {
+  const stored = localStorage.getItem('customThemeImage');
+  if (!stored) {
+    alert(t('backup_none'));
+    return;
+  }
+  const payload = JSON.stringify({ type: 'custom-theme-backup', image: stored, savedAt: new Date().toISOString() });
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'theme-backup.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importThemeBackup(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.image) throw new Error('invalid backup');
+      localStorage.setItem('customThemeImage', data.image);
+      applyCustomImageTheme(data.image);
+      alert(t('backup_restored'));
+    } catch (err) {
+      alert(t('backup_invalid'));
+    }
+  };
+  reader.readAsText(file);
+}
+
+function applyCustomImageTheme(dataUrl) {
+  document.body.style.backgroundImage = `url(${dataUrl})`;
+  document.body.style.backgroundAttachment = 'fixed';
+  document.body.style.backgroundRepeat = 'no-repeat';
+  const box = document.querySelector('.box');
+  if (box) {
+    box.style.backdropFilter = 'blur(12px)';
+    box.style.webkitBackdropFilter = 'blur(12px)';
+    box.style.border = '1px solid rgba(255,255,255,0.08)';
+  }
+  const img = new Image();
+  img.onload = () => {
+    const sw = 40, sh = 40;
+    const canvas = document.createElement('canvas');
+    canvas.width = sw;
+    canvas.height = sh;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, sw, sh);
+    let palette;
+    try {
+      palette = buildPalette(ctx.getImageData(0, 0, sw, sh).data);
+    } catch (err) {
+      palette = [[70, 70, 75], [45, 45, 50], [100, 100, 105], [130, 130, 135]];
+    }
+    setThemeFromPalette(palette);
+  };
+  img.src = dataUrl;
+}
+
+function buildPalette(pixels) {
+  const buckets = {};
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (pixels[i + 3] < 100) continue;
+    const r = Math.round(pixels[i] / 32) * 32;
+    const g = Math.round(pixels[i + 1] / 32) * 32;
+    const b = Math.round(pixels[i + 2] / 32) * 32;
+    const key = r + ',' + g + ',' + b;
+    buckets[key] = (buckets[key] || 0) + 1;
+  }
+  const sorted = Object.entries(buckets).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k]) => k.split(',').map(Number));
+  return sorted.length ? sorted : [[80, 80, 85]];
+}
+
+function luminance([r, g, b]) {
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+function saturation([r, g, b]) {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  return max === 0 ? 0 : (max - min) / max;
+}
+
+function adjustShade([r, g, b], factor) {
+  return [r, g, b].map(v => Math.min(255, Math.max(0, Math.round(v * factor))));
+}
+
+function rgbStr(c, a) {
+  return a === undefined ? `rgb(${c[0]},${c[1]},${c[2]})` : `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+}
+
+function setThemeFromPalette(palette) {
+  const dominant = palette[0];
+  const isDark = luminance(dominant) < 0.55;
+  const textColor = isDark ? '#f5f5f5' : '#151515';
+  const mutedColor = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.6)';
+
+  let accent = palette.slice(1).sort((a, b) => saturation(b) - saturation(a))[0] || dominant;
+  if (saturation(accent) < 0.15) accent = isDark ? [76, 139, 245] : [45, 100, 220];
+
+  const secondarySource = palette[2] || palette[1] || dominant;
+  const boxShade = adjustShade(dominant, isDark ? 0.55 : 1.2);
+  const inputShade = adjustShade(dominant, isDark ? 0.75 : 1.35);
+  const secondaryShade = adjustShade(secondarySource, isDark ? 0.7 : 1.25);
+  const disabledShade = adjustShade(dominant, isDark ? 0.45 : 0.85);
+
+  const style = document.body.style;
+  style.setProperty('--bg', rgbStr(dominant));
+  style.setProperty('--box-bg', rgbStr(boxShade, 0.72));
+  style.setProperty('--text', textColor);
+  style.setProperty('--input-bg', rgbStr(inputShade, 0.85));
+  style.setProperty('--input-text', textColor);
+  style.setProperty('--accent', rgbStr(accent));
+  style.setProperty('--secondary-bg', rgbStr(secondaryShade, 0.65));
+  style.setProperty('--disabled-bg', rgbStr(disabledShade, 0.6));
+  style.setProperty('--muted', mutedColor);
+  style.setProperty('--title-color', mutedColor);
+}
+
 const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+const inTelegram = !!(tg && ((tg.initData && tg.initData.length > 0) || (tg.platform && tg.platform !== 'unknown')));
 
 function applyTelegramThemeParams() {
   if (!tg || !tg.themeParams) return;
@@ -190,12 +411,12 @@ function applyTelegramThemeParams() {
 }
 
 function hapticTap() {
-  if (tg && tg.HapticFeedback) {
+  if (inTelegram && tg.HapticFeedback) {
     try { tg.HapticFeedback.impactOccurred('light'); } catch (e) {}
   }
 }
 
-if (tg) {
+if (inTelegram) {
   try { tg.ready(); tg.expand(); } catch (e) {}
   const hasStoredTheme = !!localStorage.getItem('theme');
   setTheme(hasStoredTheme ? localStorage.getItem('theme') : 'telegram');
@@ -212,7 +433,17 @@ if (tg) {
   setTheme(localStorage.getItem('theme') || 'dark');
 }
 
-setLang(localStorage.getItem('lang') || 'fa');
+const storedLang = localStorage.getItem('lang');
+setLang(storedLang || 'fa');
+
+function chooseLang(lang) {
+  setLang(lang);
+  document.getElementById('langPrompt').style.display = 'none';
+}
+
+if (!storedLang) {
+  document.getElementById('langPrompt').style.display = 'flex';
+}
 
 let currentMode = 'direct';
 let currentFormats = [];
@@ -254,17 +485,24 @@ async function fetchFormats() {
   (data.formats || []).forEach(f => {
     const opt = document.createElement('option');
     opt.value = f.format_id;
+    opt.dataset.hasAudio = f.has_audio ? '1' : '0';
     const size = f.filesize ? (f.filesize / 1048576).toFixed(1) + ' MB' : '';
     opt.textContent = `${f.label} (${f.ext}) ${size}`;
     select.appendChild(opt);
   });
+
+  if (data.too_long) {
+    statusEl.textContent = t('too_long');
+  }
 
   document.getElementById('preview').style.display = 'block';
 }
 
 async function startDownload() {
   const url = document.getElementById('url').value.trim();
-  const format_id = document.getElementById('format').value;
+  const formatSelect = document.getElementById('format');
+  const format_id = formatSelect.value;
+  const has_audio = formatSelect.selectedOptions[0]?.dataset.hasAudio === '1';
   const btn = document.getElementById('btn');
   const statusEl = document.getElementById('status');
   if (!url) return;
@@ -274,7 +512,7 @@ async function startDownload() {
   const res = await fetch('/api/download', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({url, format_id, mode: currentMode})
+    body: JSON.stringify({url, format_id, mode: currentMode, has_audio})
   });
   const data = await res.json();
   if (data.error) {
@@ -332,7 +570,7 @@ async function poll(jobId) {
         link.href = data.link;
         link.textContent = '⬇️ ' + t('manual_click');
         link.style.cssText = 'background:var(--accent);color:#fff;padding:12px;border-radius:8px;text-align:center;font-weight:bold;text-decoration:none;';
-        if (tg && tg.openLink) {
+        if (inTelegram && tg.openLink) {
           link.addEventListener('click', (e) => { e.preventDefault(); tg.openLink(data.link); });
         }
         statusEl.appendChild(document.createElement('br'));
