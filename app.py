@@ -1,9 +1,12 @@
 import os
 import time
 import uuid
+import socket
+import ipaddress
 import threading
 import queue
 import traceback
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify, send_file, render_template
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -21,6 +24,28 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 MAX_CONCURRENT_DOWNLOADS = 2
 FILE_TTL_SECONDS = 3 * 60 * 60
 MAX_FILE_AGE_CHECK_INTERVAL = 600
+MAX_DURATION_SECONDS = int(os.environ.get("MAX_DURATION_SECONDS", 4 * 60 * 60))
+
+
+def is_safe_url(url):
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return False
+    if parsed.scheme not in ("http", "https"):
+        return False
+    host = parsed.hostname
+    if not host:
+        return False
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return False
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or ip.is_unspecified:
+            return False
+    return True
 
 jobs = {}
 job_queue = queue.Queue()
@@ -31,12 +56,12 @@ lock = threading.Lock()
 def worker_loop():
     global active_downloads
     while True:
-        job_id, url, format_id, mode = job_queue.get()
+        job_id, url, format_id, mode, has_audio = job_queue.get()
         with lock:
             active_downloads += 1
         jobs[job_id] = {"status": "processing"}
         try:
-            run_download(job_id, url, format_id, mode)
+            run_download(job_id, url, format_id, mode, has_audio)
         finally:
             with lock:
                 active_downloads -= 1
@@ -65,7 +90,7 @@ for _ in range(MAX_CONCURRENT_DOWNLOADS):
 threading.Thread(target=cleanup_loop, daemon=True).start()
 
 
-def run_download(job_id, url, format_id, mode):
+def run_download(job_id, url, format_id, mode, has_audio=False):
     output_template = os.path.join(DOWNLOAD_DIR, f"{job_id}.%(ext)s")
     ydl_opts = {
         "outtmpl": output_template,
@@ -84,7 +109,10 @@ def run_download(job_id, url, format_id, mode):
             "preferredquality": "192",
         }]
     elif format_id:
-        ydl_opts["format"] = f"{format_id}+bestaudio/{format_id}/best"
+        if has_audio:
+            ydl_opts["format"] = f"{format_id}/best"
+        else:
+            ydl_opts["format"] = f"{format_id}+bestaudio/{format_id}/best"
         ydl_opts["merge_output_format"] = "mp4"
     else:
         ydl_opts["format"] = "bestvideo+bestaudio/best"
@@ -92,6 +120,15 @@ def run_download(job_id, url, format_id, mode):
 
     print(f"[{job_id}] starting download url={url} format={format_id} mode={mode}", flush=True)
     try:
+        if not is_safe_url(url):
+            raise ValueError("this link is not allowed")
+
+        with yt_dlp.YoutubeDL({"quiet": True, "noplaylist": True}) as probe:
+            probe_info = probe.extract_info(url, download=False)
+        duration = probe_info.get("duration")
+        if duration and duration > MAX_DURATION_SECONDS:
+            raise ValueError(f"video is too long ({duration}s > {MAX_DURATION_SECONDS}s limit)")
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             print(f"[{job_id}] calling extract_info...", flush=True)
             info = ydl.extract_info(url, download=True)
@@ -137,6 +174,8 @@ def get_formats():
     url = data.get("url", "").strip()
     if not url:
         return jsonify({"error": "url required"}), 400
+    if not is_safe_url(url):
+        return jsonify({"error": "this link is not allowed"}), 400
     try:
         with yt_dlp.YoutubeDL({"quiet": True, "noplaylist": True}) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -157,11 +196,18 @@ def get_formats():
             })
         seen = {}
         for f in formats:
-            key = f["height"]
+            key = f["height"] or f["format_id"]
             if key not in seen or (f["filesize"] or 0) > (seen[key]["filesize"] or 0):
                 seen[key] = f
         formats = sorted(seen.values(), key=lambda x: x["height"], reverse=True)
-        return jsonify({"title": info.get("title"), "thumbnail": info.get("thumbnail"), "formats": formats})
+        duration = info.get("duration")
+        return jsonify({
+            "title": info.get("title"),
+            "thumbnail": info.get("thumbnail"),
+            "duration": duration,
+            "too_long": bool(duration and duration > MAX_DURATION_SECONDS),
+            "formats": formats,
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
@@ -172,13 +218,15 @@ def start_download():
     url = data.get("url", "").strip()
     format_id = data.get("format_id")
     mode = data.get("mode", "direct")
+    has_audio = bool(data.get("has_audio"))
     if not url:
         return jsonify({"error": "url required"}), 400
+    if not is_safe_url(url):
+        return jsonify({"error": "this link is not allowed"}), 400
 
     job_id = uuid.uuid4().hex
-    position = job_queue.qsize()
-    jobs[job_id] = {"status": "queued", "position": position}
-    job_queue.put((job_id, url, format_id, mode))
+    jobs[job_id] = {"status": "queued", "position": job_queue.qsize()}
+    job_queue.put((job_id, url, format_id, mode, has_audio))
     return jsonify({"job_id": job_id})
 
 
