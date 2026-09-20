@@ -1,9 +1,10 @@
 import os
+import secrets
 import requests
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 WEBAPP_URL = os.environ.get("WEBAPP_URL")
-WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "hook")
+WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET") or secrets.token_urlsafe(24)
 
 API_BASE = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
@@ -48,7 +49,10 @@ def send_welcome(chat_id, language_code):
             ]]
         }
     }
-    requests.post(f"{API_BASE}/sendMessage", json=payload, timeout=10)
+    try:
+        requests.post(f"{API_BASE}/sendMessage", json=payload, timeout=10)
+    except requests.RequestException:
+        pass
 
 
 def handle_update(update):
